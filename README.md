@@ -42,7 +42,7 @@ A modern, responsive web app designed for self-taught developers tracking their 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/nextjs-mastery-dashboard.git
+   git clone https://github.com/rehaider479-cmyk/nextjs-mastery-dashboard.git
    cd nextjs-mastery-dashboard
    ```
 

@@ -4,76 +4,43 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Progress } from '@/components/ui/Progress';
 import { Button } from '@/components/ui/Button';
 import { motion } from 'framer-motion';
+import { useProgress } from '@/lib/progress-context';
 import {
   ClockIcon,
   FolderIcon,
   CurrencyDollarIcon,
   CheckCircleIcon,
   PlayIcon,
-  LinkIcon
+  LinkIcon,
+  TrophyIcon
 } from '@heroicons/react/24/outline';
 
-const quickStats = [
+// Dynamic stats based on progress context
+const getQuickStats = (stats: any) => [
   {
     title: 'Hours This Week',
-    value: '8/14',
+    value: `${stats.completedHours}/${stats.totalHours}`,
     icon: ClockIcon,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 dark:bg-blue-900/20'
   },
   {
-    title: 'Projects Built',
-    value: '0/7',
-    icon: FolderIcon,
+    title: 'Tasks Completed',
+    value: `${stats.completedTasks}/${stats.totalTasks}`,
+    icon: CheckCircleIcon,
     color: 'text-green-600',
     bgColor: 'bg-green-50 dark:bg-green-900/20'
   },
   {
-    title: 'Freelance Gigs',
-    value: '0',
-    icon: CurrencyDollarIcon,
+    title: 'Week Progress',
+    value: `${stats.weeklyProgress}%`,
+    icon: TrophyIcon,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50 dark:bg-purple-900/20'
   }
 ];
 
-const currentWeekTasks = [
-  {
-    id: 1,
-    title: 'Install Next.js and create your first app',
-    completed: true,
-    timeEstimate: '1-2 hours',
-    link: 'https://nextjs.org/learn'
-  },
-  {
-    id: 2,
-    title: 'Complete first section of Next.js Learn course',
-    completed: true,
-    timeEstimate: '2-3 hours',
-    link: 'https://nextjs.org/learn'
-  },
-  {
-    id: 3,
-    title: 'Learn routing and layouts',
-    completed: false,
-    timeEstimate: '1-2 hours',
-    link: null
-  },
-  {
-    id: 4,
-    title: 'Add navigation to sample site',
-    completed: false,
-    timeEstimate: '1 hour',
-    link: null
-  },
-  {
-    id: 5,
-    title: 'Build simple static site (portfolio v1)',
-    completed: false,
-    timeEstimate: '3-4 hours',
-    link: null
-  }
-];
+// Tasks are now managed through the progress context
 
 const resources = [
   {
@@ -94,9 +61,16 @@ const resources = [
 ];
 
 export default function DashboardHome() {
-  const completedTasks = currentWeekTasks.filter(task => task.completed).length;
-  const totalTasks = currentWeekTasks.length;
-  const progressPercentage = (completedTasks / totalTasks) * 100;
+  const { state, dispatch } = useProgress();
+  const quickStats = getQuickStats(state.stats);
+
+  const handleMarkWeekComplete = () => {
+    if (state.stats.weeklyProgress === 100) {
+      dispatch({ type: 'ADVANCE_WEEK' });
+    } else {
+      alert('Complete all tasks first to advance to the next week!');
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -129,19 +103,19 @@ export default function DashboardHome() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {quickStats.map((stat, index) => (
             <Card key={stat.title}>
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                  <div className={`p-2 sm:p-3 rounded-lg ${stat.bgColor} flex-shrink-0`}>
+                    <stat.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color}`} />
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                       {stat.title}
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                       {stat.value}
                     </p>
                   </div>
@@ -163,7 +137,7 @@ export default function DashboardHome() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlayIcon className="h-5 w-5 text-blue-600" />
-                Current Week Progress - Phase 1, Week 1
+                Current Week Progress - Phase {state.currentWeek.phaseNumber}, Week {state.currentWeek.weekNumber}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -171,24 +145,24 @@ export default function DashboardHome() {
                 <div>
                   <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                     <span>Week Progress</span>
-                    <span>{completedTasks}/{totalTasks} tasks</span>
+                    <span>{state.stats.completedTasks}/{state.stats.totalTasks} tasks</span>
                   </div>
-                  <Progress value={progressPercentage} showLabel />
+                  <Progress value={state.stats.weeklyProgress} showLabel />
                 </div>
 
                 <div className="space-y-3">
-                  {currentWeekTasks.map((task) => (
+                  {state.currentWeek.tasks.slice(0, 5).map((task) => (
                     <div key={task.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <CheckCircleIcon
-                          className={`h-5 w-5 ${
+                          className={`h-5 w-5 flex-shrink-0 ${
                             task.completed
                               ? 'text-green-600'
                               : 'text-gray-400'
                           }`}
                         />
-                        <div>
-                          <p className={`text-sm ${
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm truncate ${
                             task.completed
                               ? 'line-through text-gray-500'
                               : 'text-gray-900 dark:text-white'
@@ -205,7 +179,7 @@ export default function DashboardHome() {
                           href={task.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-blue-600 hover:text-blue-800 flex-shrink-0 ml-2"
                         >
                           <LinkIcon className="h-4 w-4" />
                         </a>
@@ -214,8 +188,13 @@ export default function DashboardHome() {
                   ))}
                 </div>
 
-                <Button className="w-full" variant="outline">
-                  Mark Week Complete & Advance
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={handleMarkWeekComplete}
+                  disabled={state.stats.weeklyProgress !== 100}
+                >
+                  {state.stats.weeklyProgress === 100 ? 'Mark Week Complete & Advance' : 'Complete All Tasks First'}
                 </Button>
               </div>
             </CardContent>

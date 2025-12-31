@@ -5,137 +5,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Progress } from '@/components/ui/Progress';
 import { motion } from 'framer-motion';
+import { useProgress } from '@/lib/progress-context';
 import {
   CheckCircleIcon,
   ClockIcon,
   LinkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  PlayIcon
+  PlayIcon,
+  TrophyIcon
 } from '@heroicons/react/24/outline';
 
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  timeEstimate: string;
-  link?: string;
-  motivationalLine?: string;
-  day: number;
-}
-
-interface WeekData {
-  weekNumber: number;
-  startDate: Date;
-  tasks: Task[];
-}
-
-// Sample data for Week 1, Phase 1
-const week1Tasks: Task[] = [
-  {
-    id: 'day1-task1',
-    title: 'Install Next.js and create your first app',
-    completed: false,
-    timeEstimate: '1-2 hours',
-    link: 'https://nextjs.org/learn',
-    motivationalLine: '"Every expert was once a beginner – start strong!"',
-    day: 1
-  },
-  {
-    id: 'day1-task2',
-    title: 'Complete first section of Next.js Learn course',
-    completed: false,
-    timeEstimate: '2-3 hours',
-    link: 'https://nextjs.org/learn',
-    day: 1
-  },
-  {
-    id: 'day2-task1',
-    title: 'Learn routing and layouts',
-    completed: false,
-    timeEstimate: '1-2 hours',
-    day: 2
-  },
-  {
-    id: 'day2-task2',
-    title: 'Add navigation to sample site',
-    completed: false,
-    timeEstimate: '1 hour',
-    day: 2
-  },
-  {
-    id: 'day3-task1',
-    title: 'Images and fonts optimization',
-    completed: false,
-    timeEstimate: '1-2 hours',
-    link: 'https://nextjs.org/docs/basic-features/image-optimization',
-    day: 3
-  },
-  {
-    id: 'day3-task2',
-    title: 'Deploy to Vercel',
-    completed: false,
-    timeEstimate: '30-45 minutes',
-    link: 'https://vercel.com',
-    day: 3
-  },
-  {
-    id: 'day4-task1',
-    title: 'Build simple static site (portfolio v1) - Part 1',
-    completed: false,
-    timeEstimate: '2-3 hours',
-    day: 4
-  },
-  {
-    id: 'day5-task1',
-    title: 'Build simple static site (portfolio v1) - Part 2',
-    completed: false,
-    timeEstimate: '2-3 hours',
-    day: 5
-  },
-  {
-    id: 'day5-task2',
-    title: 'Review code and commit to GitHub',
-    completed: false,
-    timeEstimate: '1 hour',
-    day: 5
-  },
-  {
-    id: 'day6-task1',
-    title: 'Watch Jack Herrington\'s Next.js 15 Crash Course',
-    completed: false,
-    timeEstimate: '2-3 hours',
-    link: 'https://www.youtube.com/results?search_query=Jack+Herrington+Next.js+15',
-    day: 6
-  },
-  {
-    id: 'day7-task1',
-    title: 'Rest and review completed work',
-    completed: false,
-    timeEstimate: '1-2 hours',
-    motivationalLine: '"Code 1-2 hours daily: Consistency beats intensity."',
-    day: 7
-  }
-];
-
-const currentWeek: WeekData = {
-  weekNumber: 1,
-  startDate: new Date(2026, 0, 1), // January 1, 2026
-  tasks: week1Tasks
-};
 
 export default function TaskTracker() {
-  const [tasks, setTasks] = useState<Task[]>(currentWeek.tasks);
+  const { state, dispatch } = useProgress();
   const [selectedDay, setSelectedDay] = useState<number>(1);
 
   const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    dispatch({ type: 'TOGGLE_TASK', taskId });
   };
 
   const getTasksForDay = (day: number) => {
-    return tasks.filter(task => task.day === day);
+    return state.currentWeek.tasks.filter(task => task.day === day);
   };
 
   const getDayProgress = (day: number) => {
@@ -144,14 +35,14 @@ export default function TaskTracker() {
     return dayTasks.length > 0 ? (completedTasks / dayTasks.length) * 100 : 0;
   };
 
-  const getWeekProgress = () => {
-    const completedTasks = tasks.filter(task => task.completed).length;
-    return tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
-  };
-
   const markWeekComplete = () => {
-    // In a real app, this would advance to the next week
-    alert('Week completed! Ready to advance to Week 2.');
+    if (state.stats.weeklyProgress === 100) {
+      dispatch({ type: 'ADVANCE_WEEK' });
+      // Reset selected day to 1 for new week
+      setSelectedDay(1);
+    } else {
+      alert('Complete all tasks first to advance to the next week!');
+    }
   };
 
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -163,7 +54,7 @@ export default function TaskTracker() {
           Daily Task Tracker
         </h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Phase 1, Week {currentWeek.weekNumber}
+          Phase {state.currentWeek.phaseNumber}, Week {state.currentWeek.weekNumber}
         </div>
       </div>
 
@@ -172,7 +63,7 @@ export default function TaskTracker() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <PlayIcon className="h-5 w-5 text-blue-600" />
-            Week {currentWeek.weekNumber} Progress Overview
+            Week {state.currentWeek.weekNumber} Progress Overview
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -180,24 +71,27 @@ export default function TaskTracker() {
             <div>
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                 <span>Overall Progress</span>
-                <span>{tasks.filter(t => t.completed).length}/{tasks.length} tasks</span>
+                <span>{state.stats.completedTasks}/{state.stats.totalTasks} tasks</span>
               </div>
-              <Progress value={getWeekProgress()} showLabel />
+              <Progress value={state.stats.weeklyProgress} showLabel />
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3">
               {daysOfWeek.map((day, index) => {
                 const dayNumber = index + 1;
                 const progress = getDayProgress(dayNumber);
                 const isSelected = selectedDay === dayNumber;
-                const isToday = dayNumber === 1; // For demo purposes
+                const hasTasks = getTasksForDay(dayNumber).length > 0;
 
                 return (
                   <button
                     key={day}
                     onClick={() => setSelectedDay(dayNumber)}
-                    className={`p-3 rounded-lg border text-center transition-colors ${
-                      isSelected
+                    disabled={!hasTasks}
+                    className={`p-2 sm:p-3 rounded-lg border text-center transition-colors ${
+                      !hasTasks
+                        ? 'opacity-50 cursor-not-allowed'
+                        : isSelected
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
@@ -205,8 +99,8 @@ export default function TaskTracker() {
                     <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       {day}
                     </div>
-                    <div className={`text-lg font-bold ${
-                      isToday ? 'text-blue-600' : 'text-gray-900 dark:text-white'
+                    <div className={`text-base sm:text-lg font-bold ${
+                      isSelected ? 'text-blue-600' : 'text-gray-900 dark:text-white'
                     }`}>
                       {dayNumber}
                     </div>
@@ -233,12 +127,12 @@ export default function TaskTracker() {
       >
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span>Day {selectedDay} Tasks</span>
               <div className="flex items-center gap-2">
                 <ClockIcon className="h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-500">
-                  {getTasksForDay(selectedDay).length} tasks
+                  {getTasksForDay(selectedDay).length} tasks • {state.stats.completedHours}h completed
                 </span>
               </div>
             </CardTitle>
@@ -324,25 +218,25 @@ export default function TaskTracker() {
       </motion.div>
 
       {/* Week Completion */}
-      {getWeekProgress() === 100 && (
+      {state.stats.weeklyProgress === 100 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="fixed bottom-6 right-6 z-50"
+          className="fixed bottom-6 right-4 sm:right-6 z-50 max-w-xs sm:max-w-sm"
         >
           <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <CheckCircleIcon className="h-8 w-8 text-green-600" />
-                <div>
-                  <h4 className="font-medium text-green-900 dark:text-green-100">
-                    Week {currentWeek.weekNumber} Complete! 🎉
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <TrophyIcon className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-medium text-green-900 dark:text-green-100 text-sm sm:text-base">
+                    Week {state.currentWeek.weekNumber} Complete! 🎉
                   </h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
+                  <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">
                     Ready to advance to the next phase?
                   </p>
                 </div>
-                <Button onClick={markWeekComplete} size="sm">
+                <Button onClick={markWeekComplete} size="sm" className="flex-shrink-0">
                   Advance Week
                 </Button>
               </div>
